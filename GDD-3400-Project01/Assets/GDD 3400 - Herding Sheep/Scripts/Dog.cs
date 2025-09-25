@@ -171,11 +171,11 @@ namespace GDD3400.Project01
             if (explorationPoints.Count == 0 || visitedPoints.Count == explorationPoints.Count)
             {
                 GenerateRandomExplorationPoints();
-                visitedPoints.Clear(); // Reset visited set
+                visitedPoints.Clear(); 
                 _hasTarget = false;
             }
 
-            // If no target set or close enough to current target, pick a new one
+            
             if (!_hasTarget || Vector3.Distance(transform.position, _currentExplorationTarget) < 1f)
             {
                 _currentExplorationTarget = GetNextUnvisitedPoint();
@@ -223,7 +223,7 @@ namespace GDD3400.Project01
 
             
             Vector3 directionToSafe = (_safeZone - targetSheep.transform.position).normalized;
-            Vector3 herdingPosition = targetSheep.transform.position - directionToSafe * 2f;
+            Vector3 herdingPosition = targetSheep.transform.position - directionToSafe * 6f;
 
             
             gameObject.tag = "Threat";
