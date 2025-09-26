@@ -162,7 +162,10 @@ namespace GDD3400.Project01
                 _targetSpeed = Mathf.Lerp(_wanderSpeed, _runSpeed, normalizedDistance + 0.25f);
 
                 // If we're fleeing, we also want to weight our target slightly towards the centroid, this keeps the flock a little together
-                _target = Vector3.Lerp(_target, centroid, 0.5f);
+                if (_friendTargets.Count > 0)
+                {
+                    _target = Vector3.Lerp(_target, centroid, 0.5f);
+                }
 
                 return;
             }
