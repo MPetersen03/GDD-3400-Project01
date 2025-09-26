@@ -99,7 +99,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2471741539017510992}
   - component: {fileID: 4807236908242575682}
-  - component: {fileID: 2419401589748853415}
+  - component: {fileID: 3959674396989860822}
   m_Layer: 6
   m_Name: Dog
   m_TagString: Untagged
@@ -137,7 +137,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sheep: {fileID: 0}
---- !u!54 &2419401589748853415
+  _stateDebug: 
+--- !u!54 &3959674396989860822
 Rigidbody:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -159,11 +160,11 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 84
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!1 &4259236394591651595
 GameObject:
   m_ObjectHideFlags: 0

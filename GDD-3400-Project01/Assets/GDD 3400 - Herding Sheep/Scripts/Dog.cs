@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngineInternal;
 
@@ -31,39 +32,48 @@ namespace GDD3400.Project01
 
         private Vector3 _safeZone;
 
+        // Gets rigidbody component so that dog can move.
         private Rigidbody _rb;
 
+        // list of points to explore and ones that it has visited
         List<Vector3> explorationPoints;
         HashSet<Vector3> visitedPoints;
 
         public GameObject sheep;
 
+        // Directory so that the dog remembers sheep locations
         Dictionary<Sheep, Vector3> sheepMemory;
 
         private Vector3 _currentExplorationTarget;
         private bool _hasTarget = false;
 
-        enum DogState { Explore, ChaseSheep, HerdSheep, Idle }
+        // States the dog can be in
+        enum DogState { Explore, ChaseSheep, HerdSheep }
 
         private DogState _state;
 
+        public string _stateDebug;
+
+        // Initialize layer masks for targets and obstacles
+        // Get the Rigidbody component for movement
+        // Start coroutine to remember the safe zone position
         public void Awake()
         {
-            // Find the layers in the project settings
+            
             _targetsLayer = LayerMask.GetMask("Targets");
             _obstaclesLayer = LayerMask.GetMask("Obstacles");
 
-            // gets rigidbody
             _rb = GetComponent<Rigidbody>();
 
             StartCoroutine(RememberSafeZone());
-            
-
-
+ 
         }
 
+        // Set initial dog state to exploring
+        // Initialize data structures for exploration and memory
         void Start()
         {
+            
             _state = DogState.Explore;
             explorationPoints = new List<Vector3>();
             visitedPoints = new HashSet<Vector3>();
@@ -80,9 +90,13 @@ namespace GDD3400.Project01
             DecisionMaking();
         }
 
+        // Use a spherical overlap check to detect sheep in the environment
+        // Store or update each detected sheep's position in memory
         private void Perception()
         {
+            
             Collider[] hits = Physics.OverlapSphere(transform.position, _sightRadius, _targetsLayer);
+
 
             foreach (var hit in hits)
             {
@@ -97,17 +111,21 @@ namespace GDD3400.Project01
             }
         }
 
+        // Remove sheep from memory if they're null or close to the safe zone
+        // Choose state based on known sheep: Explore, Chase, or Herd
         private void DecisionMaking()
         {
 
             List<Sheep> toForget = new List<Sheep>();
             foreach (var kvp in sheepMemory)
             {
-                if (kvp.Key == null) toForget.Add(kvp.Key);
+                Vector3 sheepPos = kvp.Key.GetComponent<Rigidbody>().position;
+                float distToSafe = Vector3.Distance(sheepPos, _safeZone);
+
+                if (kvp.Key == null || distToSafe < 7.5f ) toForget.Add(kvp.Key);
             }
             foreach (var sheep in toForget)
                 sheepMemory.Remove(sheep);
-
 
             if (sheepMemory.Count == 0)
             {
@@ -115,7 +133,7 @@ namespace GDD3400.Project01
             }
             else
             {
-
+                
                 foreach (var kvp in sheepMemory)
                 {
                     float dist = Vector3.Distance(transform.position, kvp.Value);
@@ -145,29 +163,36 @@ namespace GDD3400.Project01
                     Wander();
                     break;
                 case DogState.ChaseSheep:
-                    MoveToLastKnownSheep();
+                    MoveToClosestKnownSheep();
                     break;
                 case DogState.HerdSheep:
                     HerdNearestSheep();
                     break;
             }
+
+            _stateDebug = _state.ToString();
         }
 
+        // Delay briefly to allow dog to settle at its start position
+        // Save current position as the safe zone location
+        // Enable dog behavior
         private IEnumerator RememberSafeZone()
         {
-           
+ 
             yield return new WaitForSeconds(0.2f);
 
             _safeZone = _rb.position;
             Debug.Log(_safeZone.ToString());
 
-            this.gameObject.tag = "Untagged";
-
             IsActive = true;
         }
 
+
+        // If all exploration points are visited, generate new ones
+        // Move toward the next unvisited point
         private void Wander()
         {
+            
             if (explorationPoints.Count == 0 || visitedPoints.Count == explorationPoints.Count)
             {
                 GenerateRandomExplorationPoints();
@@ -175,8 +200,7 @@ namespace GDD3400.Project01
                 _hasTarget = false;
             }
 
-            
-            if (!_hasTarget || Vector3.Distance(transform.position, _currentExplorationTarget) < 1f)
+            if (!_hasTarget || Vector3.Distance(transform.position, _currentExplorationTarget) < 2f)
             {
                 _currentExplorationTarget = GetNextUnvisitedPoint();
                 _hasTarget = true;
@@ -185,7 +209,8 @@ namespace GDD3400.Project01
             MoveTowards(_currentExplorationTarget);
         }
 
-        private void MoveToLastKnownSheep()
+        // Find and move toward the closest sheep position in memory
+        private void MoveToClosestKnownSheep()
         {
             Vector3 closest = Vector3.zero;
             float minDist = float.MaxValue;
@@ -202,6 +227,8 @@ namespace GDD3400.Project01
 
             MoveTowards(closest);
         }
+
+        // Find the nearest sheep and move to a position behind it to drive it toward the safe zone
         private void HerdNearestSheep()
         {
             Sheep targetSheep = null;
@@ -226,20 +253,25 @@ namespace GDD3400.Project01
             Vector3 herdingPosition = targetSheep.transform.position - directionToSafe * 6f;
 
             
-            gameObject.tag = "Threat";
             MoveTowards(herdingPosition);
         }
+
+
+        // Move the dog toward the given position using Rigidbody physics
         private void MoveTowards(Vector3 target)
         {
             Vector3 direction = (target - transform.position).normalized;
             Vector3 velocity = direction * _maxSpeed;
 
-            Vector3 lookDirection = Vector3.RotateTowards(transform.forward, target, (_maxSpeed * Time.deltaTime), 0.0f);
+            direction.y = 0;
+
+            Vector3 lookDirection = Vector3.RotateTowards(transform.forward, direction, (_maxSpeed * Time.deltaTime), 0.0f);
             
-            //transform.rotation = Quaternion.LookRotation(lookDirection);
+            transform.rotation = Quaternion.LookRotation(lookDirection);
             _rb.linearVelocity = Vector3.ClampMagnitude(velocity, _maxSpeed);
         }
 
+        // Generate 10 random points within the defined area for exploration
         private void GenerateRandomExplorationPoints()
         {
             for (int i = 0; i < 10; i++)
@@ -254,6 +286,7 @@ namespace GDD3400.Project01
             }
         }
 
+        // Return the next unvisited exploration point, or safe zone if all have been visited
         private Vector3 GetNextUnvisitedPoint()
         {
             foreach (var point in explorationPoints)
@@ -265,7 +298,7 @@ namespace GDD3400.Project01
                 }
             }
 
-            return _safeZone; // fallback
+            return _safeZone; 
         }
 
     }
